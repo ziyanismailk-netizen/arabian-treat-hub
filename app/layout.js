@@ -15,10 +15,9 @@ const geistMono = Geist_Mono({
 
 export const metadata = {
   title: "Arabian Treat Hub",
-  description: "Food Delivery App",
-  // 📱 THIS IS THE ONLY LINE THAT MATTERS FOR MOBILE
-  // It forces the phone to scale everything down to normal size.
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no",
+  description: "Restaurant Management System",
+  manifest: "/manifest.json", // 👈 This links the App file
+  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0", // 👈 Prevents zooming on mobile
 };
 
 export default function RootLayout({ children }) {
