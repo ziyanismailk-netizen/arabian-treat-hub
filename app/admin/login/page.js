@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { auth, db } from "@/lib/firebase"; 
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
@@ -9,10 +9,12 @@ export default function AdminLogin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const router = useRouter();
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setError("");
     setLoading(true);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -20,8 +22,8 @@ export default function AdminLogin() {
 
       const userDoc = await getDoc(doc(db, "users", user.uid));
       if (!userDoc.exists()) {
-        alert("No staff profile found.");
-        await auth.signOut();
+        await signOut(auth);
+        setError("❌ No staff profile found.");
         setLoading(false);
         return;
       }
@@ -29,15 +31,13 @@ export default function AdminLogin() {
       const role = userDoc.data()?.role;
 
       if (role === "admin") {
-        router.push("/admin/dashboard"); // The New Main Home
-      } else if (role === "delivery") {
-        router.push("/admin/scanner"); 
+        router.push("/admin/dashboard");
       } else {
-        alert("Access Denied.");
-        await auth.signOut();
+        await signOut(auth);
+        setError("❌ Access denied. Only admins can login here.");
       }
     } catch (error) {
-      alert("Error: " + error.message);
+      setError("❌ " + error.message);
     }
     setLoading(false);
   };
@@ -50,15 +50,20 @@ export default function AdminLogin() {
           <h2 className="text-3xl font-black text-slate-900 uppercase">Staff Entry</h2>
         </div>
         <form onSubmit={handleLogin} className="space-y-6">
+          {error && (
+            <div className="bg-red-100 border-2 border-red-500 text-red-700 px-4 py-3 rounded-xl font-bold text-sm">
+              {error}
+            </div>
+          )}
           <div>
             <label className="text-[12px] font-black uppercase text-slate-800 ml-4 block mb-2">Staff Email</label>
-            <input type="email" required className="w-full p-5 bg-slate-50 rounded-3xl border-2 border-slate-100 outline-none focus:border-emerald-500 text-slate-900 font-bold" onChange={(e) => setEmail(e.target.value)} />
+            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-5 bg-slate-50 rounded-3xl border-2 border-slate-100 outline-none focus:border-emerald-500 text-slate-900 font-bold" />
           </div>
           <div>
             <label className="text-[12px] font-black uppercase text-slate-800 ml-4 block mb-2">Password</label>
-            <input type="password" required className="w-full p-5 bg-slate-50 rounded-3xl border-2 border-slate-100 outline-none focus:border-emerald-500 text-slate-900 font-bold" onChange={(e) => setPassword(e.target.value)} />
+            <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-5 bg-slate-50 rounded-3xl border-2 border-slate-100 outline-none focus:border-emerald-500 text-slate-900 font-bold" />
           </div>
-          <button disabled={loading} className="w-full bg-emerald-950 text-white p-6 rounded-3xl font-black uppercase tracking-widest hover:bg-black transition-all">
+          <button disabled={loading} className="w-full bg-emerald-950 text-white p-6 rounded-3xl font-black uppercase tracking-widest hover:bg-black transition-all disabled:opacity-50">
             {loading ? "Verifying..." : "Enter Command Center"}
           </button>
         </form>

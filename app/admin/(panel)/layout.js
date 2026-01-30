@@ -14,7 +14,7 @@ export default function AdminLayout({ children }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  const menuItems = [{ name: "Dashboard", path: "/admin/dashboard", icon: "💎" }, { name: "Live Orders", path: "/admin/orders", icon: "📋" }, { name: "Sales Report", path: "/admin/sales", icon: "📈" }, { name: "Menu Manager", path: "/admin/menu", icon: "🍴" }, { name: "Customers", path: "/admin/customers", icon: "👥" }, { name: "QR Scanner", path: "/admin/scanner", icon: "📸" }, { name: "Settings", path: "/admin/settings", icon: "⚙️" }];
+  const menuItems = [{ name: "Dashboard", path: "/admin/dashboard", icon: "💎" }, { name: "Live Orders", path: "/admin/orders", icon: "📋" }, { name: "Sales Report", path: "/admin/sales", icon: "📈" }, { name: "Menu Manager", path: "/admin/menu", icon: "🍴" }, { name: "Customers", path: "/admin/customers", icon: "👥" }, { name: "Settings", path: "/admin/settings", icon: "⚙️" }];
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
