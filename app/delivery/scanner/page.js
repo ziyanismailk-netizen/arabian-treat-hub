@@ -1,20 +1,17 @@
 "use client";
 import { useState, useEffect } from "react";
-import { QrReader } from "react-qr-reader"; 
+import { QrReader } from "react-qr-reader";
 import { db, auth } from "@/lib/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 
-export default function DeliveryApp() {
-  // 🔐 AUTH STATES
+export default function DeliveryScanner() {
+  // AUTH STATES
   const [user, setUser] = useState(null);
-  const [userRole, setUserRole] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
 
-  // 📷 SCANNER STATES
+  // SCANNER STATES
   const [data, setData] = useState("No Result");
   const [manualId, setManualId] = useState("");
   const [order, setOrder] = useState(null);
@@ -23,88 +20,64 @@ export default function DeliveryApp() {
   const [cameraActive, setCameraActive] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  // 1️⃣ CHECK LOGIN STATUS & VERIFY ROLE
+  // CHECK LOGIN STATUS & VERIFY ROLE
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
-        // Verify user has delivery role
         const userDoc = await getDoc(doc(db, "users", currentUser.uid));
         const role = userDoc.data()?.role;
-        
         if (role === "delivery") {
           setUser(currentUser);
-          setUserRole(role);
           setAuthLoading(false);
         } else {
-          // Not a delivery driver - sign them out
           await signOut(auth);
           setUser(null);
-          setUserRole(null);
-          setLoginError("❌ Access denied. This app is for delivery drivers only.");
           setAuthLoading(false);
+          setLoginError("❌ Access denied. This app is for delivery staff only.");
         }
       } else {
         setUser(null);
-        setUserRole(null);
         setAuthLoading(false);
       }
     });
     return () => unsubscribe();
   }, []);
 
-  // 2️⃣ HANDLE LOGIN
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setLoginError("");
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      // Auth state change listener will verify role and update user state
-      // If role is not "delivery", user will be signed out automatically
-    } catch (err) {
-      setLoginError(err.message || "Invalid Email or Password");
-    }
-  };
-
-  // 🔍 FETCH ORDER
+  // FETCH ORDER
   const fetchOrder = async (orderId) => {
     if (!orderId) return;
     if (orderId === data) return;
-    
     setLoading(true);
     setStatusMsg("Searching...");
     setData(orderId);
-    
     try {
       const docRef = doc(db, "orders", orderId.trim());
       const docSnap = await getDoc(docRef);
-
       if (docSnap.exists()) {
         setOrder({ id: docSnap.id, ...docSnap.data() });
         setStatusMsg("Order Found! ✅");
-        setCameraActive(false); 
+        setCameraActive(false);
       } else {
         setOrder(null);
         setStatusMsg("❌ Order Not Found");
-        setTimeout(() => setData("No Result"), 2000); 
+        setTimeout(() => setData("No Result"), 2000);
       }
     } catch (error) {
-      console.error(error);
       setStatusMsg("Error fetching order.");
     }
     setLoading(false);
   };
 
-  // 🚚 MARK DELIVERED
+  // MARK DELIVERED
   const markDelivered = async () => {
     if (!order) return;
     if (!confirm("Complete this delivery?")) return;
-
     setLoading(true);
     try {
       await updateDoc(doc(db, "orders", order.id), {
         status: "Delivered",
         deliveredAt: new Date(),
-        deliveredBy: user.email // 👈 Record who delivered it
+        deliveredBy: user.email
       });
       alert("✅ Delivery Successful!");
       resetScanner();
@@ -129,47 +102,20 @@ export default function DeliveryApp() {
     window.open(url, '_blank');
   };
 
-  // ⏳ LOADING SCREEN
   if (authLoading) return <div className="w-screen h-screen flex items-center justify-center bg-slate-100 text-lg font-bold">Loading...</div>;
 
-  // 🔐 LOGIN SCREEN (If not logged in)
   if (!user) {
     return (
       <div className="w-screen h-screen bg-slate-900 flex flex-col justify-center items-center p-6 text-white">
         <h1 className="text-4xl font-[1000] italic uppercase mb-2">🚚 Driver</h1>
-        <p className="text-slate-400 mb-10 text-sm">Enter your credentials</p>
-        
-        <form onSubmit={handleLogin} className="w-full max-w-sm flex flex-col gap-4">
-          <input 
-            type="email" 
-            placeholder="Driver Email" 
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="p-4 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 font-bold outline-none focus:border-green-500"
-            autoFocus
-          />
-          <input 
-            type="password" 
-            placeholder="Password" 
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="p-4 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 font-bold outline-none focus:border-green-500"
-          />
-          
-          {loginError && <div className="text-red-400 font-bold text-center text-sm">{loginError}</div>}
-          
-          <button type="submit" className="bg-green-500 text-black font-[1000] uppercase py-4 rounded-xl mt-2 shadow-lg active:scale-95 transition-transform">
-            Login
-          </button>
-        </form>
+        <p className="text-slate-400 mb-10 text-sm">Please login from the Delivery Login page.</p>
+        <a href="/delivery/login" className="bg-green-500 text-black font-[1000] uppercase py-4 px-8 rounded-xl shadow-lg active:scale-95 transition-transform mt-4">Go to Delivery Login</a>
       </div>
     );
   }
 
-  // 📱 MAIN SCANNER UI (Logged In - Full Screen App)
   return (
     <div className="w-screen h-screen bg-slate-50 font-sans text-black flex flex-col overflow-hidden">
-      
       {/* HEADER BAR */}
       <div className="w-full bg-green-500 text-black py-3 px-4 shadow-lg flex justify-between items-center shrink-0">
         <h1 className="text-2xl font-[1000] italic uppercase">🚚 Delivery</h1>
@@ -177,24 +123,20 @@ export default function DeliveryApp() {
           Logout
         </button>
       </div>
-
       {/* CONTENT CONTAINER */}
       <div className="flex-1 overflow-y-auto flex flex-col items-center p-4 pb-safe">
-        
         {/* ERROR ALERT */}
         {errorMsg && (
           <div className="w-full bg-red-100 border-2 border-red-500 text-red-700 px-4 py-3 rounded-xl font-bold text-sm mb-4 uppercase text-center">
             ⚠️ {errorMsg}
           </div>
         )}
-
         {/* STATUS MESSAGE */}
         {statusMsg && (
           <div className="w-full bg-yellow-100 border-2 border-yellow-500 text-yellow-800 px-4 py-3 rounded-xl font-bold text-sm mb-4 uppercase text-center">
             ℹ️ {statusMsg}
           </div>
         )}
-
         {/* CAMERA SECTION - FULLSCREEN */}
         {!order && (
           <div className="w-full flex-1 bg-black rounded-3xl overflow-hidden shadow-2xl border-4 border-green-500 flex flex-col items-center justify-center mb-4 relative">
@@ -208,7 +150,7 @@ export default function DeliveryApp() {
                     }
                   }}
                   className="w-full h-full object-cover"
-                  constraints={{ facingMode: 'environment' }} 
+                  constraints={{ facingMode: 'environment' }}
                   scanDelay={500}
                 />
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -231,7 +173,6 @@ export default function DeliveryApp() {
             )}
           </div>
         )}
-
         {/* MANUAL INPUT */}
         {!order && (
           <div className="w-full flex gap-3 mb-4">
@@ -245,14 +186,12 @@ export default function DeliveryApp() {
             <button onClick={() => fetchOrder(manualId)} className="bg-black text-white px-6 rounded-2xl font-[1000] uppercase text-base shadow-lg active:scale-95 transition-transform">GO</button>
           </div>
         )}
-
         {/* ORDER DETAILS - WHEN LOADED */}
         {order && (
           <>
             <button onClick={resetScanner} className="w-full bg-slate-700 text-white px-4 py-3 rounded-2xl text-base font-bold uppercase mb-4 shadow-lg active:scale-95">
               ↺ Scan New Order
             </button>
-
             <div className="w-full flex flex-col gap-4">
               {/* ORDER SUMMARY CARD */}
               <div className="bg-white p-6 rounded-3xl shadow-lg border-2 border-slate-200">
@@ -267,11 +206,9 @@ export default function DeliveryApp() {
                   <div className={`h-full ${order.status === 'Delivered' ? 'bg-green-500 w-full' : 'bg-yellow-500 w-3/4'} transition-all duration-1000`}></div>
                 </div>
               </div>
-
               {/* CUSTOMER INFO CARD */}
               <div className="bg-white p-6 rounded-3xl shadow-lg border-2 border-slate-200">
                 <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-5">Customer</h3>
-                
                 <div className="flex items-center gap-4 mb-6">
                   <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center text-2xl shrink-0">👤</div>
                   <div>
@@ -281,7 +218,6 @@ export default function DeliveryApp() {
                     </a>
                   </div>
                 </div>
-
                 {/* ADDRESS */}
                 <div className="flex gap-4 mb-6">
                   <div className="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center text-2xl shrink-0">📍</div>
@@ -292,7 +228,6 @@ export default function DeliveryApp() {
                     </div>
                   </div>
                 </div>
-
                 {/* ACTION BUTTONS */}
                 <div className="grid grid-cols-1 gap-3">
                   <button onClick={openMaps} className="w-full py-4 bg-blue-100 text-blue-700 rounded-2xl font-[1000] uppercase text-lg hover:bg-blue-200 active:scale-95">

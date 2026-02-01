@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { getAuth, signInWithPhoneNumber, signOut, RecaptchaVerifier } from "firebase/auth";
+import { app } from "@/lib/firebase";
 
 export default function CustomerLogin() {
   const [mounted, setMounted] = useState(false);
@@ -8,6 +10,8 @@ export default function CustomerLogin() {
   const [step, setStep] = useState("phone"); 
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
+  const [confirmation, setConfirmation] = useState(null);
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -24,21 +28,60 @@ export default function CustomerLogin() {
     }
   }, []);
 
-  const handleSendOtp = (e) => {
+  // Custom multi-user login: get ID token, store, sign out
+  const handleSendOtp = async (e) => {
     e.preventDefault();
-    if (phone.length === 10) setStep("otp");
-    else alert("Enter a valid 10-digit number");
+    if (phone.length !== 10) {
+      alert("Enter a valid 10-digit number");
+      return;
+    }
+    setLoading(true);
+    try {
+      const auth = getAuth(app);
+      // Only initialize RecaptchaVerifier once
+      if (!window.recaptchaVerifier) {
+        window.recaptchaVerifier = new RecaptchaVerifier('recaptcha-container', { size: 'invisible' }, auth);
+        await window.recaptchaVerifier.render();
+      }
+      const fullPhone = "+91" + phone;
+      const confirmationResult = await signInWithPhoneNumber(auth, fullPhone, window.recaptchaVerifier);
+      setConfirmation(confirmationResult);
+      setStep("otp");
+    } catch (err) {
+      alert("Failed to send OTP: " + err.message);
+    }
+    setLoading(false);
   };
 
-  const handleVerifyOtp = (e) => {
+  const handleVerifyOtp = async (e) => {
     e.preventDefault();
-    // Verification logic
-    if (otp === "123456") { 
-      localStorage.setItem("ath_user_phone", phone);
-      router.push("/customer/menu"); 
-    } else {
-      alert("Invalid OTP. Try 123456");
+    if (!confirmation) {
+      alert("No OTP session. Please retry.");
+      return;
     }
+    setLoading(true);
+    try {
+      const result = await confirmation.confirm(otp);
+      const user = result.user;
+      const idToken = await user.getIdToken();
+      // Store token and user info in localStorage under unique key for multi-customer
+      const key = `ath_customer_token_+91${phone}`;
+      localStorage.setItem(key, JSON.stringify({ token: idToken, phone: "+91" + phone, ts: Date.now() }));
+      // Optionally, keep a list of all logged-in customers
+      let allCustomers = JSON.parse(localStorage.getItem("ath_customer_list") || "[]");
+      if (!allCustomers.includes("+91" + phone)) {
+        allCustomers.push("+91" + phone);
+        localStorage.setItem("ath_customer_list", JSON.stringify(allCustomers));
+      }
+      // Immediately sign out to clear Firebase global session
+      await signOut(getAuth(app));
+      // Example: fetch Firestore doc using REST API and token
+      // await fetchCustomerProfile(idToken);
+      router.push("/customer/menu");
+    } catch (err) {
+      alert("Invalid OTP: " + err.message);
+    }
+    setLoading(false);
   };
 
   if (!mounted) return null;
@@ -72,6 +115,7 @@ export default function CustomerLogin() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-black font-sans">
+      <div id="recaptcha-container"></div>
       <div className="w-full max-w-md bg-white border-4 border-black rounded-[2.5rem] p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
         <div className="text-center mb-8">
           <img src="/logo.jpg" className="w-20 h-20 rounded-2xl border-2 border-black mx-auto mb-4" />
@@ -79,19 +123,19 @@ export default function CustomerLogin() {
             {step === "phone" ? "Welcome" : "Verify Phone"}
           </h1>
         </div>
-
+        {loading && <div className="text-center text-yellow-600 font-bold mb-4">Loading...</div>}
         {step === "phone" ? (
           <form onSubmit={handleSendOtp} className="space-y-4">
             <div className="relative">
               <span className="absolute left-4 top-4 font-bold text-slate-400 text-sm">+91</span>
               <input type="tel" placeholder="PHONE NUMBER" maxLength="10" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full p-4 pl-14 bg-slate-100 rounded-2xl border-none font-bold text-sm outline-none focus:ring-4 ring-yellow-400" required />
             </div>
-            <button type="submit" className="w-full bg-[#064e3b] text-white py-4 rounded-2xl font-black uppercase italic text-sm shadow-lg active:scale-95 transition-all">Send OTP →</button>
+            <button type="submit" className="w-full bg-[#064e3b] text-white py-4 rounded-2xl font-black uppercase italic text-sm shadow-lg active:scale-95 transition-all" disabled={loading}>Send OTP →</button>
           </form>
         ) : (
           <form onSubmit={handleVerifyOtp} className="space-y-4">
             <input type="text" placeholder="ENTER OTP" maxLength="6" value={otp} onChange={(e) => setOtp(e.target.value)} className="w-full p-4 bg-slate-100 rounded-2xl border-none font-bold text-sm text-center tracking-[0.5em] outline-none focus:ring-4 ring-yellow-400" required />
-            <button type="submit" className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black uppercase italic text-sm shadow-lg active:scale-95 transition-all">Verify & Enter →</button>
+            <button type="submit" className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black uppercase italic text-sm shadow-lg active:scale-95 transition-all" disabled={loading}>Verify & Enter →</button>
           </form>
         )}
       </div>

@@ -20,9 +20,20 @@ export default function AdminLayout({ children }) {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         const userDoc = await getDoc(doc(db, "users", user.uid));
-        if (userDoc.exists() && userDoc.data().role === "admin") { setRole("admin"); setLoading(false); }
-        else { router.push("/admin/login"); }
-      } else { router.push("/admin/login"); }
+        const role = userDoc.exists() ? userDoc.data().role : null;
+        if (role === "admin") {
+          setRole("admin");
+          setLoading(false);
+        } else if (role === "delivery") {
+          // Delivery user trying to access admin panel: sign out and redirect
+          await signOut(auth);
+          router.push("/delivery/login");
+        } else {
+          router.push("/admin/login");
+        }
+      } else {
+        router.push("/admin/login");
+      }
     });
     return () => unsubscribe();
   }, [router]);
