@@ -5,6 +5,23 @@ import { getAuth, signInWithPhoneNumber, signOut, RecaptchaVerifier } from "fire
 import { app } from "@/lib/firebase";
 
 export default function CustomerLogin() {
+  const router = useRouter();
+
+  // TEMP: Direct login for testing
+  const handleDirectLogin = () => {
+    // Simulate a test user login (set token and phone in localStorage)
+    const testPhone = "+911234567890";
+    const fakeToken = "test-token-123";
+    const key = `ath_customer_token_${testPhone}`;
+    localStorage.setItem(key, JSON.stringify({ token: fakeToken, phone: testPhone, ts: Date.now() }));
+    localStorage.setItem("ath_user_phone", testPhone); // Required for menu page
+    let allCustomers = JSON.parse(localStorage.getItem("ath_customer_list") || "[]");
+    if (!allCustomers.includes(testPhone)) {
+      allCustomers.push(testPhone);
+      localStorage.setItem("ath_customer_list", JSON.stringify(allCustomers));
+    }
+    router.push("/customer/menu");
+  };
   const [mounted, setMounted] = useState(false);
   const [showSplash, setShowSplash] = useState(false);
   const [step, setStep] = useState("phone"); 
@@ -12,7 +29,6 @@ export default function CustomerLogin() {
   const [otp, setOtp] = useState("");
   const [confirmation, setConfirmation] = useState(null);
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
 
   useEffect(() => {
     setMounted(true);
@@ -123,6 +139,8 @@ export default function CustomerLogin() {
             {step === "phone" ? "Welcome" : "Verify Phone"}
           </h1>
         </div>
+        {/* TEMP: Direct Login Button for Testing */}
+        <button onClick={handleDirectLogin} className="w-full mb-4 bg-yellow-400 text-black py-3 rounded-xl font-black uppercase text-xs shadow-lg active:scale-95 transition-all">Direct Login (Test)</button>
         {loading && <div className="text-center text-yellow-600 font-bold mb-4">Loading...</div>}
         {step === "phone" ? (
           <form onSubmit={handleSendOtp} className="space-y-4">

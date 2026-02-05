@@ -14,7 +14,7 @@ export default function AdminLayout({ children }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  const menuItems = [{ name: "Dashboard", path: "/admin/dashboard", icon: "💎" }, { name: "Live Orders", path: "/admin/orders", icon: "📋" }, { name: "Sales Report", path: "/admin/sales", icon: "📈" }, { name: "Menu Manager", path: "/admin/menu", icon: "🍴" }, { name: "Customers", path: "/admin/customers", icon: "👥" }, { name: "Settings", path: "/admin/settings", icon: "⚙️" }];
+  const menuItems = [{ name: "Dashboard", path: "/admin/dashboard", icon: "💎" }, { name: "Live Orders", path: "/admin/orders", icon: "📋" }, { name: "Sales Report", path: "/admin/sales", icon: "📈" }, { name: "Menu Manager", path: "/admin/menu", icon: "🍴" }, { name: "Customers", path: "/admin/customers", icon: "👥" }, { name: "Notifications", path: "/admin/notifications", icon: "🔔" }, { name: "Settings", path: "/admin/settings", icon: "⚙️" }];
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -115,10 +115,37 @@ export default function AdminLayout({ children }) {
 
   return (
     <div className="flex min-h-screen bg-[#FFFFFF]"> 
-      <aside className="w-72 bg-[#064e3b] text-white fixed h-full flex flex-col z-50 shadow-2xl">
-        <div className="p-8 border-b border-white/10"><h1 className="text-2xl font-[1000] italic text-white tracking-tighter">ATH ADMIN</h1><div className="mt-2 py-1 px-3 bg-[#042f24] rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2 w-fit"><span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>Shop is Live</div></div>
-        <nav className="flex-1 p-4 space-y-2 mt-4 overflow-y-auto">{menuItems.map((item) => (<Link key={item.path} href={item.path} className={`flex items-center space-x-4 px-5 py-3 rounded-2xl transition-all duration-300 font-[1000] text-[11px] uppercase tracking-[0.2em] group ${pathname === item.path ? "bg-white text-[#000000] shadow-xl scale-105" : "text-white hover:bg-white/10"}`}><span className={`text-xl ${pathname === item.path ? "opacity-100" : "opacity-60"}`}>{item.icon}</span><span>{item.name}</span></Link>))}</nav>
-        <div className="p-6 border-t border-white/10 bg-[#042f24]"><button onClick={() => signOut(auth)} className="w-full bg-[#dc2626] text-white py-4 rounded-2xl font-[1000] uppercase text-[11px] shadow-xl active:scale-95 transition-all border border-white/20">Logout System</button></div>
+      <aside className="w-72 bg-gradient-to-b from-emerald-950 via-emerald-900 to-emerald-800 text-white fixed h-full flex flex-col z-50 shadow-2xl">
+        {/* Brand/Logo */}
+        <div className="flex flex-col items-center py-6 border-b border-white/10">
+          <img src="/logo.jpg" alt="Logo" className="w-14 h-14 object-contain rounded-2xl shadow-lg mb-2 border-4 border-white" />
+          <div className="bg-white text-emerald-900 font-black text-xl px-5 py-2 rounded-2xl shadow-lg tracking-widest italic mb-1">ATH</div>
+          <div className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-100 mb-1">Admin Panel</div>
+          <div className="py-1 px-3 bg-emerald-700/80 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2 w-fit mt-1">
+            <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>Shop is Live
+          </div>
+        </div>
+        {/* Navigation */}
+        <nav className="flex-1 p-4 space-y-2 mt-4 overflow-y-auto">
+          {menuItems.map((item) => (
+            <Link key={item.path} href={item.path}
+              className={`flex items-center gap-4 px-6 py-4 rounded-2xl font-extrabold text-[13px] uppercase tracking-widest group transition-all duration-200 border-2 ${
+                pathname === item.path
+                  ? "bg-gradient-to-r from-emerald-400/30 to-white/80 text-emerald-950 border-emerald-300 shadow-xl scale-105"
+                  : "border-transparent text-white hover:bg-emerald-800/40 hover:border-emerald-700"
+              }`}
+            >
+              <span className={`text-2xl transition-all ${pathname === item.path ? "opacity-100 scale-125" : "opacity-70 group-hover:opacity-100"}`}>{item.icon}</span>
+              <span>{item.name}</span>
+            </Link>
+          ))}
+        </nav>
+        {/* Logout */}
+        <div className="p-6 border-t border-white/10 bg-emerald-900/80 flex flex-col items-center">
+          <button onClick={() => signOut(auth)} className="w-full bg-gradient-to-r from-red-600 to-red-500 text-white py-3 rounded-xl font-extrabold uppercase text-xs shadow-lg active:scale-95 transition-all border border-white/20 tracking-widest hover:from-red-700 hover:to-red-600">
+            Logout
+          </button>
+        </div>
       </aside>
       <main className="flex-1 ml-72 min-h-screen p-10 bg-[#FFFFFF]"><div className="max-w-6xl mx-auto">{children}</div></main>
     </div>

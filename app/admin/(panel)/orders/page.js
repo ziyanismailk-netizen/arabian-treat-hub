@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
-import { collection, query, orderBy, onSnapshot, doc, updateDoc } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, getDocs, deleteDoc } from "firebase/firestore";
 
 export default function KitchenDashboard() {
   const [orders, setOrders] = useState([]);
@@ -43,6 +43,18 @@ export default function KitchenDashboard() {
         status: "Cancelled",
         cancelReason: reason || "Admin Cancelled"
       });
+    }
+  };
+
+  const bulkWipeAllOrders = async () => {
+    if (!confirm(`🗑️ DELETE ALL ${orders.length} ORDERS? This cannot be undone!`)) return;
+    try {
+      const snapshot = await getDocs(collection(db, "orders"));
+      const deletePromises = snapshot.docs.map(d => deleteDoc(doc(db, "orders", d.id)));
+      await Promise.all(deletePromises);
+      alert("✅ All orders deleted!");
+    } catch (error) {
+      alert("Error: " + error.message);
     }
   };
 
@@ -129,6 +141,7 @@ export default function KitchenDashboard() {
 
           <div class="dashed"></div>
 
+
           ${order.items.map(item => `
             <div class="row">
               <span class="col-item">${item.name}</span>
@@ -170,27 +183,146 @@ export default function KitchenDashboard() {
   };
 
   return (
-    <div className="w-full font-sans text-black">
-      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-        <div><div className="bg-[#16a34a] text-white p-2 px-4 rounded-lg shadow-md flex items-center gap-3 w-fit mb-2"><div className="w-3 h-3 bg-white rounded-full animate-pulse"/><span className="font-bold uppercase tracking-widest text-xs">{status}</span></div><h1 className="text-3xl font-[1000] uppercase italic">{activeTab} ({filteredOrders.length})</h1></div>
-        <div className="flex bg-slate-100 p-1 rounded-xl">{["Live", "Delivered", "History"].map((tab) => (<button key={tab} onClick={() => setActiveTab(tab)} className={`px-6 py-3 rounded-lg text-xs font-[1000] uppercase tracking-wider transition-all ${activeTab === tab ? "bg-black text-white shadow-lg" : "text-slate-400 hover:bg-white"}`}>{tab}</button>))}</div>
+    <div className="w-full font-sans text-black min-h-screen bg-gradient-to-br from-emerald-50 via-white to-emerald-100 pb-10">
+      {/* Sticky Tab Bar & Status */}
+      <div className="sticky top-0 z-20 bg-gradient-to-b from-emerald-50 via-white to-emerald-100 pt-6 pb-2 mb-6 shadow-sm">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 max-w-6xl mx-auto px-2">
+          <div>
+            <div className="bg-[#16a34a] text-white p-2 px-4 rounded-lg shadow-md flex items-center gap-3 w-fit mb-2">
+              <div className="w-3 h-3 bg-white rounded-full animate-pulse"/>
+              <span className="font-bold uppercase tracking-widest text-xs">{status}</span>
+            </div>
+            <h1 className="text-3xl font-extrabold uppercase italic tracking-tight text-emerald-950">{activeTab} <span className="text-emerald-400">({filteredOrders.length})</span></h1>
+          </div>
+          <div className="flex flex-col gap-3 items-end">
+            <div className="flex bg-emerald-100 p-1 rounded-2xl shadow-inner border border-emerald-200">
+              {["Live", "Delivered", "History"].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-7 py-3 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all duration-150 mx-1 shadow-sm ${
+                    activeTab === tab
+                      ? "bg-emerald-900 text-white scale-105 shadow-lg border border-emerald-700"
+                      : "text-emerald-700 hover:bg-white hover:text-emerald-900"
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+            {orders.length > 0 && (
+              <button
+                onClick={bulkWipeAllOrders}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-black text-xs rounded-lg shadow-lg transition-all"
+              >
+                🗑️ WIPE ALL ORDERS
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredOrders.length === 0 ? (<div className="col-span-full py-20 text-center border-4 border-dashed border-slate-100 rounded-3xl"><p className="text-slate-400 font-bold uppercase tracking-widest text-lg">No {activeTab} Orders</p></div>) : (
+      {/* Orders Grid */}
+      <div className="max-w-5xl mx-auto px-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {filteredOrders.length === 0 ? (
+          <div className="col-span-full py-16 text-center border-2 border-dashed border-emerald-100 rounded-2xl bg-white/80">
+            <p className="text-emerald-300 font-extrabold uppercase tracking-widest text-lg">No {activeTab} Orders</p>
+          </div>
+        ) : (
           filteredOrders.map((order) => (
-            <div key={order.id} className={`bg-white border-2 rounded-xl p-5 shadow-sm flex flex-col justify-between transition-colors ${order.status === 'History' || order.status === 'Cancelled' ? 'border-slate-100 opacity-60' : 'border-black'}`}>
+            <div
+              key={order.id}
+              className={`bg-white border-2 rounded-3xl p-6 shadow-xl flex flex-col justify-between transition-all duration-200 hover:scale-[1.01] ${
+                order.status === 'History' || order.status === 'Cancelled'
+                  ? 'border-emerald-100 opacity-60'
+                  : 'border-emerald-900'
+              }`}
+            >
               <div>
-                <div className="flex justify-between items-start border-b pb-2 mb-3 border-slate-100">
-                  <span className="text-lg font-[1000]">#{order.billNo || order.id.slice(0, 5)}</span>
-                  <span className={`text-xs font-bold uppercase ${order.status === 'Pending' ? 'text-red-600' : order.status === 'Cancelled' ? 'text-red-500 line-through' : 'text-slate-400'}`}>{order.status.replace(/_/g, " ")}</span>
+                <div className="flex justify-between items-start border-b pb-2 mb-3 border-emerald-100">
+                  <span className="text-xl font-extrabold text-emerald-900">#{order.billNo || order.id.slice(0, 5)}</span>
+                  <span className={`text-xs font-bold uppercase ${
+                    order.status === 'Pending'
+                      ? 'text-red-600'
+                      : order.status === 'Cancelled'
+                      ? 'text-red-500 line-through'
+                      : 'text-emerald-700'
+                  }`}>
+                    {order.status.replace(/_/g, ' ')}
+                  </span>
                 </div>
-                <div className="space-y-2 mb-4">{order.items?.map((item, idx) => (<div key={idx} className="flex justify-between text-sm font-bold border-b border-dashed border-slate-100 pb-1"><span>{item.qty} x {item.name}</span><span>₹{item.price * item.qty}</span></div>))}</div>
-                {order.deliveryFee > 0 && <div className="flex justify-between text-xs font-bold text-blue-600 border-b border-slate-100 pb-2 mb-2"><span>Delivery Charge</span><span>+₹{order.deliveryFee}</span></div>}
+                <div className="space-y-2 mb-4">
+                  {order.items?.map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="flex flex-col border-b border-dashed border-emerald-100 pb-1"
+                    >
+                      <div className="flex justify-between text-sm font-bold">
+                        <span>{item.qty} x {item.name}</span>
+                        <span>₹{item.price * item.qty}</span>
+                      </div>
+                      {item.info && (
+                        <div className="text-[11px] text-emerald-700 font-normal mt-1">{item.info}</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {order.deliveryFee > 0 && (
+                  <div className="flex justify-between text-xs font-bold text-blue-600 border-b border-emerald-100 pb-2 mb-2">
+                    <span>Delivery Charge</span>
+                    <span>+₹{order.deliveryFee}</span>
+                  </div>
+                )}
               </div>
               <div>
-                <div className="flex justify-between items-center mb-4 pt-2"><span className="text-xs font-bold text-slate-400 uppercase">Total Bill</span><span className="text-xl font-[1000]">₹{order.totalBill}</span></div>
-                {activeTab === "Live" ? (<div className="grid grid-cols-2 gap-2"><button onClick={() => printKOT(order)} className="col-span-1 py-3 border-2 border-black rounded-lg font-black uppercase text-[10px] hover:bg-slate-50 flex justify-center items-center gap-1">🖨️ Bill</button><button onClick={() => cancelOrder(order)} className="col-span-1 py-3 border-2 border-red-100 bg-red-50 text-red-600 rounded-lg font-black uppercase text-[10px] hover:bg-red-100 hover:border-red-200">❌ Cancel</button>{order.status === 'Pending' && <button onClick={() => acceptAndPrint(order)} className="col-span-2 py-3 bg-black text-white rounded-lg font-black uppercase text-xs hover:scale-105 transition-transform">Accept & Print KOT</button>}{(order.status === 'Preparing' || order.status === 'Ready') && <button onClick={() => updateStatus(order.id, "Out_for_Delivery")} className="col-span-2 py-3 bg-[#facc15] text-black border border-black rounded-lg font-black uppercase text-xs hover:scale-105 transition-transform">Dispatch</button>}{order.status === 'Out_for_Delivery' && <div className="col-span-2 py-3 bg-blue-50 text-blue-600 text-center rounded-lg font-bold text-[10px] uppercase border border-blue-200 animate-pulse">Waiting...</div>}</div>) : (<button onClick={() => printKOT(order)} className="w-full py-2 border border-slate-300 rounded bg-white text-[10px] font-bold uppercase hover:bg-slate-100">Reprint Bill</button>)}
+                <div className="flex justify-between items-center mb-4 pt-2">
+                  <span className="text-xs font-bold text-emerald-400 uppercase">Total Bill</span>
+                  <span className="text-2xl font-extrabold text-emerald-900">₹{order.totalBill}</span>
+                </div>
+                {activeTab === 'Live' ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => printKOT(order)}
+                      className="col-span-1 py-3 border-2 border-emerald-900 rounded-xl font-extrabold uppercase text-xs hover:bg-emerald-50 flex justify-center items-center gap-1 transition-all"
+                    >
+                      🖨️ Bill
+                    </button>
+                    <button
+                      onClick={() => cancelOrder(order)}
+                      className="col-span-1 py-3 border-2 border-red-200 bg-red-50 text-red-600 rounded-xl font-extrabold uppercase text-xs hover:bg-red-100 hover:border-red-300 transition-all"
+                    >
+                      ❌ Cancel
+                    </button>
+                    {order.status === 'Pending' && (
+                      <button
+                        onClick={() => acceptAndPrint(order)}
+                        className="col-span-2 py-3 bg-emerald-900 text-white rounded-xl font-extrabold uppercase text-xs hover:scale-105 transition-transform mt-1"
+                      >
+                        Accept & Print KOT
+                      </button>
+                    )}
+                    {(order.status === 'Preparing' || order.status === 'Ready') && (
+                      <button
+                        onClick={() => updateStatus(order.id, 'Out_for_Delivery')}
+                        className="col-span-2 py-3 bg-yellow-300 text-black border border-emerald-900 rounded-xl font-extrabold uppercase text-xs hover:scale-105 transition-transform mt-1"
+                      >
+                        Dispatch
+                      </button>
+                    )}
+                    {order.status === 'Out_for_Delivery' && (
+                      <div className="col-span-2 py-3 bg-blue-50 text-blue-600 text-center rounded-xl font-bold text-xs border border-blue-200 animate-pulse mt-1">
+                        Waiting...
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => printKOT(order)}
+                    className="w-full py-2 border border-emerald-200 rounded bg-white text-xs font-bold uppercase hover:bg-emerald-50 transition-all"
+                  >
+                    Reprint Bill
+                  </button>
+                )}
               </div>
             </div>
           ))

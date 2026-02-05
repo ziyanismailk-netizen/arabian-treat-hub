@@ -1,16 +1,18 @@
 "use client";
-import { useState, useEffect, useRef, Suspense } from "react"; // <--- Added Suspense
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp, doc, getDoc, setDoc } from "firebase/firestore";
+import { getNextBillNo } from "@/lib/billNo";
 import Link from "next/link";
+import { Geolocation } from "@capacitor/geolocation";
 
 // 🔑 PASTE YOUR GOOGLE MAPS API KEY HERE
 const GOOGLE_API_KEY = "AIzaSy..."; 
 
 // 1. Rename your main logic to "AddressContent" (Internal Component)
 function AddressContent() {
-  const [formData, setFormData] = useState({ area: "", address: "", pincode: "", district: "Udupi", landmark: "", contactPhone: "" });
+  const [formData, setFormData] = useState({ area: "", address: "", pincode: "", district: "Udupi", landmark: "", contactPhone: "", latitude: null, longitude: null });
   const [savedAddress, setSavedAddress] = useState(null); 
   const [useSaved, setUseSaved] = useState(true); 
   const [cart, setCart] = useState([]);
@@ -65,15 +67,12 @@ function AddressContent() {
     }
   }, [formData, useSaved]);
 
-  const detectLocation = () => {
-    if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser");
-      return;
-    }
-
+  const detectLocation = async () => {
     setDetecting(true);
-    navigator.geolocation.getCurrentPosition(async (position) => {
-      const { latitude, longitude } = position.coords;
+    try {
+      // Use Capacitor Geolocation for native app
+      const coordinates = await Geolocation.getCurrentPosition();
+      const { latitude, longitude } = coordinates.coords;
       
       try {
         const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${GOOGLE_API_KEY}`;
@@ -94,7 +93,9 @@ function AddressContent() {
             address: result.formatted_address,
             pincode: pincode,
             district: city,
-            landmark: ""
+            landmark: "",
+            latitude: latitude,
+            longitude: longitude
           }));
           alert("📍 Location pinpointed successfully!");
         } else {
@@ -103,13 +104,13 @@ function AddressContent() {
       } catch (error) {
         console.error(error);
         alert("Could not fetch address details.");
-      } finally {
-        setDetecting(false);
       }
-    }, () => {
-      alert("Unable to retrieve GPS.");
+    } catch (error) {
+      console.error("Geolocation error:", error);
+      alert("Unable to get GPS location. Make sure location permission is enabled.");
+    } finally {
       setDetecting(false);
-    }, { enableHighAccuracy: true });
+    }
   };
 
   const handleMainAction = async () => {
@@ -127,7 +128,9 @@ function AddressContent() {
     setIsPlacing(true);
     const userPhone = localStorage.getItem("ath_user_phone");
     try {
-      await addDoc(collection(db, "orders"), {
+      // Get the next bill number atomically
+      const billNo = await getNextBillNo();
+      const docRef = await addDoc(collection(db, "orders"), {
         customerPhone: userPhone,
         deliveryPhone: formData.contactPhone,
         items: cart,
@@ -135,11 +138,15 @@ function AddressContent() {
         totalBill: cart.reduce((a, i) => a + (i.price * i.qty), 0),
         status: "Pending",
         paymentMethod: "COD",
-        createdAt: serverTimestamp()
+        createdAt: serverTimestamp(),
+        billNo
       });
       localStorage.removeItem("ath_cart");
       router.push("/customer/orders");
-    } catch (e) { alert("Error placing order."); } finally { setIsPlacing(false); }
+    } catch (e) {
+      alert("Error placing order: " + (e && e.message ? e.message : e));
+      console.error("Order placement error", e);
+    } finally { setIsPlacing(false); }
   };
 
   if (loading) return null;
@@ -181,6 +188,12 @@ function AddressContent() {
             >
               {detecting ? "Locating..." : "📍 Auto-Detect (Google Maps)"}
             </button>
+            {formData.latitude && formData.longitude && (
+              <div className="p-3 bg-green-50 border-2 border-green-500 rounded-xl text-[11px] font-bold text-green-700 flex items-center gap-2">
+                <span>✅ GPS Locked</span>
+                <span className="text-[9px] text-green-600">({formData.latitude.toFixed(4)}, {formData.longitude.toFixed(4)})</span>
+              </div>
+            )}
             <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 pt-2">Recipient Info</h2>
             <div className="relative">
               <span className="absolute left-4 top-4 font-bold text-slate-400 text-sm">+91</span>

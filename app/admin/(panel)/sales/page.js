@@ -1,7 +1,10 @@
 "use client";
 import { useState, useEffect } from "react";
+import Papa from "papaparse";
+
+// Remove duplicate export default and move handleExportCSV inside the correct SalesPage component
 import { db } from "@/lib/firebase";
-import { collection, query, orderBy, onSnapshot, doc } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, doc, getDocs, deleteDoc } from "firebase/firestore";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 
 export default function SalesPage() {
@@ -30,6 +33,44 @@ export default function SalesPage() {
     'Delivered', 
     'History'
   ];
+
+  // --- CSV EXPORT ---
+  const handleExportCSV = () => {
+    if (!dailyOrders.length) return;
+    // Flatten items for each order
+    const rows = dailyOrders.flatMap(order => {
+      if (!order.items || !order.items.length) {
+        return [{
+          BillNo: order.billNo || order.id.slice(0,5),
+          Date: order.createdAt ? new Date(order.createdAt.seconds * 1000).toLocaleString() : '',
+          Customer: order.customerPhone || "Walk-in",
+          Area: order.deliveryDetails?.area || "Counter",
+          Item: '',
+          Qty: '',
+          Amount: order.totalBill
+        }];
+      }
+      return order.items.map(item => ({
+        BillNo: order.billNo || order.id.slice(0,5),
+        Date: order.createdAt ? new Date(order.createdAt.seconds * 1000).toLocaleString() : '',
+        Customer: order.customerPhone || "Walk-in",
+        Area: order.deliveryDetails?.area || "Counter",
+        Item: item.name,
+        Qty: item.qty,
+        Amount: order.totalBill
+      }));
+    });
+    const csv = Papa.unparse(rows);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `sales_${selectedDate}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   // 2. Sync with Store Settings (The "Shift Date")
   useEffect(() => {
@@ -77,6 +118,18 @@ export default function SalesPage() {
     
     setDailyOrders(filtered);
   }, [selectedDate, allOrders]);
+
+  const bulkWipeAllOrders = async () => {
+    if (!confirm(`🗑️ DELETE ALL ${allOrders.length} ORDERS? This cannot be undone!`)) return;
+    try {
+      const snapshot = await getDocs(collection(db, "orders"));
+      const deletePromises = snapshot.docs.map(d => deleteDoc(doc(db, "orders", d.id)));
+      await Promise.all(deletePromises);
+      alert("✅ All orders deleted!");
+    } catch (error) {
+      alert("Error: " + error.message);
+    }
+  };
 
   // --- CALCULATIONS ---
   const calculateTotal = (orders) => orders.reduce((sum, o) => sum + (Number(o.totalBill) || 0), 0);
@@ -195,90 +248,171 @@ export default function SalesPage() {
       printWindow.print();
     }, 500);
   };
+
+  // --- QUICK STATS ---
+  const averageBill = dailyOrders.length > 0 ? (dailyTotal / dailyOrders.length) : 0;
+  const pieData = getPieData();
+  const mostPopularItem = pieData.length > 0 ? pieData[0] : null;
+  const totalItemsSold = pieData.reduce((sum, item) => sum + item.value, 0);
+
   return (
-    <div className="w-full p-6 font-sans text-black">
-      <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 border-b pb-4 border-slate-200">
+    <div className="w-full min-h-screen bg-gradient-to-br from-emerald-50 via-white to-emerald-100 p-0 font-sans text-black">
+      {/* Sticky Date Bar */}
+      <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-lg border-b border-emerald-100 px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4 shadow-sm">
         <div>
-          <h1 className="text-3xl font-[1000] italic uppercase tracking-tighter">Sales Analytics</h1>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+          <h1 className="text-3xl md:text-4xl font-extrabold italic uppercase tracking-tighter text-emerald-950 drop-shadow-lg">Sales Analytics</h1>
+          <p className="text-xs font-bold text-emerald-700 uppercase tracking-widest mt-1">
             Viewing Date: <span className="text-black underline">{selectedDate}</span>
             {selectedDate === businessDate && <span className="ml-2 bg-yellow-200 px-2 rounded text-[10px] no-underline">CURRENT SHIFT</span>}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-3 items-center">
            <input 
              type="date" 
              value={selectedDate} 
              onChange={(e) => setSelectedDate(e.target.value)} 
-             className="p-3 border-2 border-black rounded-lg font-bold text-sm bg-white cursor-pointer"
+             className="p-3 border-2 border-emerald-200 rounded-xl font-bold text-sm bg-white cursor-pointer focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all shadow"
            />
            <button 
              onClick={printDayReport} 
-             className="bg-black text-white px-4 py-3 rounded-lg font-bold text-xs uppercase flex items-center gap-2 hover:scale-105 transition-transform"
+             className="bg-emerald-900 text-white px-5 py-3 rounded-xl font-extrabold text-xs uppercase flex items-center gap-2 hover:bg-emerald-800 hover:scale-105 transition-all shadow-lg"
            >
              <span>🖨️</span> Print Summary
+           </button>
+           <button
+             onClick={handleExportCSV}
+             className="bg-blue-600 text-white px-5 py-3 rounded-xl font-extrabold text-xs uppercase flex items-center gap-2 hover:bg-blue-500 hover:scale-105 transition-all shadow-lg"
+           >
+             <span>⬇️</span> Export CSV
            </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white border-2 border-black rounded-xl p-6 shadow-sm">
-          <div className="text-xs font-black uppercase text-slate-400">Total Sales</div>
-          <div className="text-3xl font-[1000] mt-1">₹{dailyTotal}</div>
-          <div className="text-[10px] font-bold text-slate-400 mt-2">{dailyOrders.length} Bills</div>
+      {/* Quick Stats Bar */}
+      <div className="w-full flex flex-col md:flex-row gap-6 md:gap-10 justify-center items-center mt-8 mb-4 px-4">
+        <div className="bg-white/90 backdrop-blur-lg border-2 border-emerald-900 rounded-3xl p-8 shadow-2xl flex-1 min-w-[220px]">
+          <div className="text-xs font-black uppercase text-emerald-400">Avg. Bill Value</div>
+          <div className="text-3xl font-extrabold text-emerald-900 mt-1">₹{averageBill.toFixed(0)}</div>
+          <div className="text-[11px] font-bold text-emerald-400 mt-2">{dailyOrders.length} Bills</div>
         </div>
-        <div className="bg-blue-50 border-2 border-blue-100 rounded-xl p-6 shadow-sm">
+        <div className="bg-white/90 backdrop-blur-lg border-2 border-blue-400 rounded-3xl p-8 shadow-2xl flex-1 min-w-[220px]">
+          <div className="text-xs font-black uppercase text-blue-400">Most Popular Item</div>
+          <div className="text-3xl font-extrabold text-blue-600 mt-1">{mostPopularItem ? mostPopularItem.name : '—'}</div>
+          <div className="text-[11px] font-bold text-blue-400 mt-2">{mostPopularItem ? mostPopularItem.value : 0} Sold</div>
+        </div>
+        <div className="bg-white/90 backdrop-blur-lg border-2 border-green-400 rounded-3xl p-8 shadow-2xl flex-1 min-w-[220px]">
+          <div className="text-xs font-black uppercase text-green-400">Total Items Sold</div>
+          <div className="text-3xl font-extrabold text-green-600 mt-1">{totalItemsSold}</div>
+        </div>
+      </div>
+
+      {/* Floating Stats */}
+      <div className="w-full flex flex-col md:flex-row gap-6 md:gap-10 justify-center items-center mt-2 mb-12 px-4">
+        <div className="bg-white/80 backdrop-blur-lg border-2 border-emerald-900 rounded-3xl p-8 shadow-2xl flex-1 min-w-[220px]">
+          <div className="text-xs font-black uppercase text-emerald-400">Total Sales</div>
+          <div className="text-4xl font-extrabold text-emerald-900 mt-1">₹{dailyTotal}</div>
+          <div className="text-[11px] font-bold text-emerald-400 mt-2">{dailyOrders.length} Bills</div>
+        </div>
+        <div className="bg-blue-50/80 backdrop-blur-lg border-2 border-blue-200 rounded-3xl p-8 shadow-2xl flex-1 min-w-[220px]">
           <div className="text-xs font-black uppercase text-blue-400">Monthly</div>
-          <div className="text-3xl font-[1000] text-blue-600 mt-1">₹{monthlyTotal}</div>
+          <div className="text-4xl font-extrabold text-blue-600 mt-1">₹{monthlyTotal}</div>
         </div>
-        <div className="bg-green-50 border-2 border-green-100 rounded-xl p-6 shadow-sm">
+        <div className="bg-green-50/80 backdrop-blur-lg border-2 border-green-200 rounded-3xl p-8 shadow-2xl flex-1 min-w-[220px]">
           <div className="text-xs font-black uppercase text-green-400">Yearly</div>
-          <div className="text-3xl font-[1000] text-green-600 mt-1">₹{yearlyTotal}</div>
+          <div className="text-4xl font-extrabold text-green-600 mt-1">₹{yearlyTotal}</div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        <div className="bg-white border-2 border-slate-100 rounded-xl p-6 shadow-sm h-[350px]">
-          <h3 className="text-sm font-black uppercase mb-4 text-slate-400">📈 Sales Trend</h3>
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={getLineData()}><CartesianGrid strokeDasharray="3 3" stroke="#eee"/><XAxis dataKey="name" tick={{fontSize:10}}/><YAxis tick={{fontSize:10}}/><Tooltip/><Line type="monotone" dataKey="sales" stroke="#000" strokeWidth={3} dot={{r:4}}/></LineChart>
-          </ResponsiveContainer>
+      {/* Modern Chart Section */}
+      <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-10 mb-12 px-4">
+        <div className="bg-white/90 border-2 border-emerald-100 rounded-3xl p-8 shadow-2xl h-[370px] flex flex-col">
+          <h3 className="text-lg font-extrabold uppercase mb-6 text-emerald-900 flex items-center gap-2">📈 Sales Trend</h3>
+          <div className="flex-1 flex items-center">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={getLineData()}><CartesianGrid strokeDasharray="3 3" stroke="#eee"/><XAxis dataKey="name" tick={{fontSize:10}}/><YAxis tick={{fontSize:10}}/><Tooltip/><Line type="monotone" dataKey="sales" stroke="#059669" strokeWidth={3} dot={{r:4}}/></LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-        <div className="bg-white border-2 border-slate-100 rounded-xl p-6 shadow-sm h-[350px]">
-          <h3 className="text-sm font-black uppercase mb-4 text-slate-400">🍕 Top Items</h3>
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart><Pie data={getPieData()} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value">{getPieData().map((entry, index) => (<Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />))}</Pie><Tooltip/><Legend verticalAlign="bottom" height={36}/></PieChart>
-          </ResponsiveContainer>
+        <div className="bg-white/90 border-2 border-emerald-100 rounded-3xl p-8 shadow-2xl h-[370px] flex flex-col">
+          <h3 className="text-lg font-extrabold uppercase mb-6 text-emerald-900 flex items-center gap-2">🍕 Top Items</h3>
+          <div className="flex-1 flex items-center">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={getPieData()}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={70}
+                  outerRadius={100}
+                  paddingAngle={4}
+                  dataKey="value"
+                  label={({ name }) => name}
+                  labelLine={false}
+                  stroke="#fff"
+                  isAnimationActive={true}
+                >
+                  {getPieData().map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} filter="url(#shadow)" />
+                  ))}
+                </Pie>
+                <defs>
+                  <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#059669" floodOpacity="0.15" />
+                  </filter>
+                </defs>
+                {/* Center label */}
+                <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle" fontSize="22" fontWeight="bold" fill="#059669">
+                  Top
+                </text>
+                <Tooltip
+                  contentStyle={{ borderRadius: 12, boxShadow: '0 2px 12px #05966922' }}
+                  formatter={(value, name, props) => [`${value} (${((value / getPieData().reduce((a, b) => a + b.value, 0)) * 100).toFixed(1)}%)`, name]}
+                />
+                <Legend
+                  verticalAlign="bottom"
+                  height={36}
+                  iconType="circle"
+                  wrapperStyle={{ borderRadius: 16, background: '#f0fdf4', padding: 8, marginTop: 12 }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
 
-      <div className="bg-white border-2 border-slate-200 rounded-xl overflow-hidden shadow-sm">
-        <div className="bg-slate-50 p-4 border-b border-slate-200">
-          <span className="font-black uppercase text-xs tracking-widest">Transaction Log</span>
+      {/* Modern Transaction Table */}
+      <div className="w-full px-4 pb-10">
+        <div className="bg-white/90 border-2 border-emerald-100 rounded-3xl overflow-hidden shadow-2xl">
+          <div className="bg-emerald-50 p-6 border-b border-emerald-100 flex items-center justify-between">
+            <span className="font-extrabold uppercase text-xs tracking-widest text-emerald-900">Transaction Log</span>
+            <span className="text-xs text-emerald-400 font-bold">{dailyOrders.length} entries</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-emerald-900 text-white uppercase text-xs font-extrabold">
+                <tr><th className="p-4">Bill No</th><th className="p-4">Customer</th><th className="p-4 text-right">Amount</th></tr>
+              </thead>
+              <tbody className="font-bold divide-y divide-emerald-50">
+                {dailyOrders.length === 0 ? (
+                  <tr><td colSpan="3" className="p-8 text-center text-emerald-300">No confirmed sales for this date.</td></tr>
+                ) : (
+                  dailyOrders.map((order) => (
+                    <tr key={order.id} className="hover:bg-emerald-50 transition-all">
+                      <td className="p-4">#{order.billNo || order.id.slice(0,5)}</td>
+                      <td className="p-4">
+                        <div className="flex flex-col">
+                          <span>{order.customerPhone || "Walk-in"}</span>
+                          <span className="text-[10px] text-emerald-400 font-normal">{order.deliveryDetails?.area || "Counter"}</span>
+                        </div>
+                      </td>
+                      <td className="p-4 text-right">₹{order.totalBill}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-        <table className="w-full text-left text-sm">
-          <thead className="bg-black text-white uppercase text-xs font-black">
-            <tr><th className="p-4">Bill No</th><th className="p-4">Customer</th><th className="p-4 text-right">Amount</th></tr>
-          </thead>
-          <tbody className="font-bold divide-y divide-slate-100">
-            {dailyOrders.length === 0 ? (
-              <tr><td colSpan="3" className="p-8 text-center text-slate-400">No confirmed sales for this date.</td></tr>
-            ) : (
-              dailyOrders.map((order) => (
-                <tr key={order.id} className="hover:bg-slate-50">
-                  <td className="p-4">#{order.billNo || order.id.slice(0,5)}</td>
-                  <td className="p-4">
-                    <div className="flex flex-col">
-                      <span>{order.customerPhone || "Walk-in"}</span>
-                      <span className="text-[10px] text-slate-400 font-normal">{order.deliveryDetails?.area || "Counter"}</span>
-                    </div>
-                  </td>
-                  <td className="p-4 text-right">₹{order.totalBill}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
       </div>
     </div>
   );

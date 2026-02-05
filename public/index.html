@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Deliver</title>
+</head>
+<body>
+    <script>
+        (function() {
+            // Immediately try to load scanner
+            const targetPath = '/delivery/scanner/';
+            
+            // Redirect regardless of when DOM is ready
+            if (window.location.pathname !== targetPath && 
+                !window.location.pathname.startsWith('/delivery/scanner')) {
+                window.location.replace(targetPath);
+            }
+            
+            // Backup redirect after DOM ready
+            document.addEventListener('DOMContentLoaded', function() {
+                if (window.location.pathname !== targetPath && 
+                    !window.location.pathname.startsWith('/delivery/scanner')) {
+                    window.location.replace(targetPath);
+                }
+            });
+        })();
+    </script>
+    <p>Loading delivery scanner...</p>
+</body>
+</html>

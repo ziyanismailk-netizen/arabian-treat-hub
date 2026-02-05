@@ -6,8 +6,8 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    // Instantly send users to the Menu
-    router.push("/customer/menu");
+    // Instantly send users to the delivery scanner
+    router.push("/delivery/scanner");
   }, []);
 
   return (

@@ -45,9 +45,35 @@ export default function SettingsPage() {
 
   return (
     <div className="w-full max-w-xl mx-auto font-sans text-black p-6">
-      <div className="mb-8 border-b pb-4 border-slate-200"><h1 className="text-3xl font-[1000] italic uppercase">Settings</h1></div>
-      <div className="bg-white border-2 border-black rounded-xl overflow-hidden shadow-sm mb-8"><div className="flex items-center justify-between p-4 border-b border-slate-100"><div><h3 className="text-sm font-black uppercase">Shop Status (Pause)</h3><p className="text-[10px] font-bold text-slate-400">{store.isOpen ? "🟢 Online" : "🔴 Paused"}</p></div><button onClick={toggleStore} className={`relative w-14 h-7 rounded-full transition-colors flex items-center px-1 ${store.isOpen ? "bg-[#16a34a]" : "bg-slate-200"}`}><div className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform ${store.isOpen ? "translate-x-7" : "translate-x-0"}`}></div></button></div><div className="flex items-center justify-between p-4 bg-slate-50"><div><h3 className="text-sm font-black uppercase">Delivery Fee (₹)</h3></div><div className="flex items-center gap-2"><input type="number" value={store.deliveryCharge} onChange={updateCharge} className="w-20 p-2 text-right font-[1000] text-sm border border-slate-300 rounded outline-none bg-white"/><button onClick={saveSettings} className="bg-black text-white px-3 py-2 rounded text-[10px] font-black uppercase hover:scale-105 transition-transform">Save</button></div></div></div>
-      <div className="bg-white border-2 border-red-100 rounded-xl p-6 shadow-sm"><h2 className="text-xl font-black uppercase mb-4 flex items-center gap-2 text-red-600"><span>🌙</span> End Shift & Reset</h2><p className="text-sm text-slate-500 mb-6 font-medium leading-relaxed">Done for the day?<br/>• Moves orders to History.<br/>• Locks Admin & Logs out.</p><button onClick={endDay} disabled={processing} className={`w-full py-4 rounded-xl font-black uppercase text-sm tracking-widest shadow-lg transition-transform ${processing ? "bg-slate-300 cursor-not-allowed" : "bg-red-600 text-white hover:scale-105 hover:bg-red-700"}`}>{processing ? "Ending..." : "🔴 End Day & Logout"}</button></div>
+      <div className="mb-8 border-b pb-4 border-slate-200">
+        <h1 className="text-3xl font-[1000] italic uppercase text-center">Settings</h1>
+      </div>
+      <div className="bg-gradient-to-r from-emerald-100 via-white to-emerald-100 border-2 border-emerald-300 rounded-2xl shadow-lg mb-8 p-6 flex flex-col gap-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-black uppercase tracking-tight text-emerald-900">Shop Status</h3>
+            <p className="text-xs font-bold text-emerald-600">{store.isOpen ? "🟢 Online" : "🔴 Paused"}</p>
+          </div>
+          <button onClick={toggleStore} className={`relative w-16 h-8 rounded-full transition-colors flex items-center px-1 ${store.isOpen ? "bg-emerald-500" : "bg-slate-200"}`}>
+            <div className={`w-6 h-6 bg-white rounded-full shadow-md transform transition-transform ${store.isOpen ? "translate-x-8" : "translate-x-0"}`}></div>
+          </button>
+        </div>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-black uppercase tracking-tight text-emerald-900">Delivery Fee (₹)</h3>
+          <div className="flex items-center gap-2">
+            <input type="number" value={store.deliveryCharge} onChange={updateCharge} className="w-24 p-3 text-right font-[1000] text-lg border border-emerald-300 rounded-xl outline-none bg-white"/>
+            <button onClick={saveSettings} className="bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-black uppercase hover:scale-105 transition-transform">Save</button>
+          </div>
+        </div>
+      </div>
+      <div className="bg-gradient-to-r from-red-100 via-white to-red-100 border-2 border-red-300 rounded-2xl p-6 shadow-lg">
+        <h2 className="text-xl font-black uppercase mb-4 flex items-center gap-2 text-red-600"><span>🌙</span> End Shift & Reset</h2>
+        <p className="text-sm text-red-700 mb-6 font-medium leading-relaxed">Done for the day?<br/>• Moves orders to History.<br/>• Locks Admin & Logs out.</p>
+        <button onClick={endDay} disabled={processing} className={`w-full py-4 rounded-xl font-black uppercase text-sm tracking-widest shadow-lg transition-transform ${processing ? "bg-slate-300 cursor-not-allowed" : "bg-red-600 text-white hover:scale-105 hover:bg-red-700"}`}>{processing ? "Ending..." : "🔴 End Day & Logout"}</button>
+      </div>
+      <div className="text-center mt-12 pt-6 border-t border-slate-200">
+        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">© All Rights Reserved by Arabian Treat Hub</p>
+      </div>
     </div>
   );
 }
