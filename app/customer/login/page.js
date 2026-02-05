@@ -1,8 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getAuth, signInWithPhoneNumber, signOut, RecaptchaVerifier } from "firebase/auth";
-import { app } from "@/lib/firebase";
+import { signInWithPhoneNumber, signOut, RecaptchaVerifier } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 export default function CustomerLogin() {
   const router = useRouter();
@@ -53,7 +53,6 @@ export default function CustomerLogin() {
     }
     setLoading(true);
     try {
-      const auth = getAuth(app);
       // Only initialize RecaptchaVerifier once
       if (!window.recaptchaVerifier) {
         window.recaptchaVerifier = new RecaptchaVerifier('recaptcha-container', { size: 'invisible' }, auth);
@@ -90,7 +89,7 @@ export default function CustomerLogin() {
         localStorage.setItem("ath_customer_list", JSON.stringify(allCustomers));
       }
       // Immediately sign out to clear Firebase global session
-      await signOut(getAuth(app));
+      await signOut(auth);
       // Example: fetch Firestore doc using REST API and token
       // await fetchCustomerProfile(idToken);
       router.push("/customer/menu");
