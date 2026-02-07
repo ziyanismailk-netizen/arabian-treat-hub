@@ -60,7 +60,7 @@ export default function ReviewCart() {
         <h1 className="text-sm font-black uppercase italic tracking-tighter">Review Order</h1>
       </header>
 
-      <main className="max-w-2xl mx-auto p-4 space-y-6">
+      <main className="p-4 space-y-4">
         {cart.map(item => (
           <div key={item.id} className="flex justify-between items-center py-2">
             <div className="flex gap-4 items-center">

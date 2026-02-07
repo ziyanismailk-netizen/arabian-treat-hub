@@ -112,7 +112,7 @@ export default function CustomerMenu() {
 
       {/* STICKY HEADER */}
       <div className="sticky top-0 z-50 bg-white border-b-2 border-slate-100">
-        <header className="max-w-7xl mx-auto p-3 flex items-center gap-3">
+        <header className="p-3 flex items-center gap-3">
           <button onClick={() => setIsSidebarOpen(true)} className="p-2.5 bg-slate-100 rounded-2xl active:bg-slate-200">
              <div className="w-5 h-0.5 bg-black mb-1"></div>
              <div className="w-3 h-0.5 bg-black"></div>
@@ -130,20 +130,20 @@ export default function CustomerMenu() {
         </div>
       </div>
 
-      <main className="max-w-7xl mx-auto px-4 mt-6 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+      <main className="px-4 mt-4 space-y-3">
         {filtered.map(item => {
            const cartItem = cart.find(i => i.id === item.id);
            const isVeg = item.diet?.toUpperCase() === 'VEG';
            return (
-             <div key={item.id} className="flex md:flex-col justify-between items-center md:items-start p-3 bg-white border-2 border-slate-100 md:border-black rounded-2xl gap-4 h-full shadow-sm">
-               <div className="flex-1 md:p-4 order-1 md:order-2 space-y-1">
+             <div key={item.id} className="flex justify-between items-center p-3 bg-white border border-slate-200 rounded-2xl gap-3">
+               <div className="flex-1 space-y-1">
                  <div className="flex items-center gap-2">
                     <div className="w-3 h-3 border border-slate-300 flex items-center justify-center rounded-sm bg-white">
                        <div className={`w-1.5 h-1.5 rounded-full ${isVeg ? 'bg-green-600' : 'bg-red-600'}`}></div>
                     </div>
                  </div>
-                 <h3 className="text-[13px] md:text-sm font-black uppercase leading-tight text-slate-800 line-clamp-2">{item.name}</h3>
-                 <p className="text-sm md:text-lg font-black text-slate-900">₹{item.price}</p>
+                 <h3 className="text-[13px] font-bold leading-tight text-slate-800 line-clamp-2">{item.name}</h3>
+                 <p className="text-sm font-black text-slate-900">₹{item.price}</p>
                  <div className="mt-2">
                    {!cartItem ? (
                      <button onClick={() => addToCart(item)} className="w-full bg-yellow-400 text-black border-2 border-black px-4 py-1.5 rounded-xl text-[10px] font-black uppercase active:scale-95 transition-all">ADD +</button>
@@ -156,7 +156,7 @@ export default function CustomerMenu() {
                    )}
                  </div>
                </div>
-               <div className="order-2 md:order-1 w-24 h-24 md:w-full md:h-48 flex-shrink-0 rounded-2xl overflow-hidden">
+               <div className="w-20 h-20 flex-shrink-0 rounded-xl overflow-hidden">
                  <img src={item.imageUrl || "/logo.jpg"} className="w-full h-full object-cover" onError={e => e.target.src="/logo.jpg"} />
                </div>
              </div>

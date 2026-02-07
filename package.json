@@ -11,8 +11,9 @@
   "dependencies": {
     "@capacitor/android": "^8.0.1",
     "@capacitor/cli": "^8.0.1",
-    "@capacitor/core": "^8.0.1",
+    "@capacitor/core": "^8.0.2",
     "@capacitor/geolocation": "^8.0.0",
+    "@msg91comm/sendotp-sdk": "^1.0.1",
     "@react-google-maps/api": "^2.20.8",
     "firebase": "^12.8.0",
     "firebase-admin": "^13.6.0",

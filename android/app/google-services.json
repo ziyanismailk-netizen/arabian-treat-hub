@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "966013446495",
+    "project_id": "arabian-treat-hub",
+    "storage_bucket": "arabian-treat-hub.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:966013446495:android:bb26fe90ed0b8a49006eea",
+        "android_client_info": {
+          "package_name": "com.arabiantreathub.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyApre0rXoBbZeaolP1y-SJjN8iaXxCv2DU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

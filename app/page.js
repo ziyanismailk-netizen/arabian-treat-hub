@@ -6,13 +6,13 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    // Instantly send users to the delivery scanner
-    router.push("/delivery/scanner");
+    // Send users to customer login
+    router.push("/customer/login");
   }, []);
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-black text-white">
-      <h1 className="text-xl font-bold animate-pulse">Loading App...</h1>
+    <div className="flex items-center justify-center min-h-screen bg-[#064e3b] text-white">
+      <h1 className="text-xl font-bold animate-pulse">Loading...</h1>
     </div>
   );
 }

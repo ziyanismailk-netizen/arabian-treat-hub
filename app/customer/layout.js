@@ -9,23 +9,37 @@ export default function CustomerLayout({ children }) {
 
   // 📡 LISTEN TO SHOP STATUS
   useEffect(() => {
+    // Timeout: if Firebase doesn't respond in 3s, proceed anyway
+    const timeout = setTimeout(() => {
+      setLoading(false);
+    }, 3000);
+
     const unsub = onSnapshot(doc(db, "settings", "store"), (docSnap) => {
+      clearTimeout(timeout);
       if (docSnap.exists()) {
         const data = docSnap.data();
         // If 'isOpen' is missing, assume true
         setIsShopOpen(data.isOpen !== false);
       }
       setLoading(false);
+    }, (error) => {
+      console.error("Firebase error:", error);
+      clearTimeout(timeout);
+      setLoading(false);
     });
-    return () => unsub();
+
+    return () => {
+      clearTimeout(timeout);
+      unsub();
+    };
   }, []);
 
   return (
-    // 1. OUTER WRAPPER (Mobile: Gray Borders / Laptop: Full White)
-    <div className="min-h-screen w-full bg-gray-200 md:bg-white flex flex-col py-8 md:py-0 font-sans text-black">
+    // MOBILE APP WRAPPER - Full Screen
+    <div className="min-h-screen w-full bg-white flex flex-col font-sans text-black">
       
-      {/* 2. APP CONTAINER */}
-      <div className="w-full flex-1 bg-white shadow-none md:shadow-none overflow-hidden relative">
+      {/* APP CONTAINER */}
+      <div className="w-full flex-1 bg-white overflow-hidden relative">
         
         {/* 3. LOADING SCREEN (Optional) */}
         {loading && (
