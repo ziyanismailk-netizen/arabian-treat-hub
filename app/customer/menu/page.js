@@ -21,6 +21,11 @@ export default function CustomerMenu() {
 
   const loadData = async () => {
     try {
+      // Set a 3-second timeout to show loading state
+      const loadTimeout = setTimeout(() => {
+        setLoading(false);
+      }, 3000);
+
       // Load menu items from Firebase
       const firebaseModule = await import("@/lib/firebase");
       const firestoreModule = await import("firebase/firestore");
@@ -28,8 +33,13 @@ export default function CustomerMenu() {
       
       const q = query(collection(firebaseModule.db, "menu"), orderBy("name", "asc"));
       const unsub = onSnapshot(q, (snapshot) => {
+        clearTimeout(loadTimeout);
         const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
         setItems(data);
+        setLoading(false);
+      }, (error) => {
+        console.error("Firebase error:", error);
+        clearTimeout(loadTimeout);
         setLoading(false);
       });
 
@@ -44,7 +54,10 @@ export default function CustomerMenu() {
       }
       
       isLoaded.current = true;
-      return () => unsub();
+      return () => {
+        clearTimeout(loadTimeout);
+        unsub();
+      };
     } catch (err) {
       console.error("Error loading data:", err);
       setLoading(false);
