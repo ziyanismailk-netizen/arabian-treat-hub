@@ -1,9 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { db } from "@/lib/firebase";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { sendOTP, verifyOTP, resendOTP, initializeOTP } from "@/lib/otp";
 
 export default function CustomerLogin() {
   const router = useRouter();
@@ -17,12 +14,9 @@ export default function CustomerLogin() {
 
   useEffect(() => {
     setMounted(true);
-    // The following line was forcing a redirect to the delivery scanner.
-    // Commenting it out to allow the customer login page to function.
-    // router.push("/delivery/scanner");
     const timer = setTimeout(() => setShowSplash(false), 2500);
     return () => clearTimeout(timer);
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     if (countdown > 0) {
@@ -40,6 +34,7 @@ export default function CustomerLogin() {
     setLoading(true);
     
     try {
+      const { sendOTP } = await import("@/lib/otp");
       await sendOTP(phone);
       setStep("otp");
       setCountdown(30);
@@ -60,14 +55,22 @@ export default function CustomerLogin() {
     const fullPhone = "+91" + phone;
     
     try {
+      const { verifyOTP } = await import("@/lib/otp");
+      const firestoreModule = await import("firebase/firestore");
+      const { db } = await import("@/lib/firebase");
+      
       await verifyOTP(phone, otp);
       
       // Save user to Firestore
-      await setDoc(doc(db, "users", fullPhone), {
-        phone: fullPhone,
-        lastLogin: serverTimestamp(),
-        createdAt: serverTimestamp()
-      }, { merge: true });
+      await firestoreModule.setDoc(
+        firestoreModule.doc(db, "users", fullPhone),
+        {
+          phone: fullPhone,
+          lastLogin: firestoreModule.serverTimestamp(),
+          createdAt: firestoreModule.serverTimestamp()
+        },
+        { merge: true }
+      );
 
       localStorage.setItem("ath_user_phone", fullPhone);
       router.push("/customer/menu");
@@ -82,6 +85,7 @@ export default function CustomerLogin() {
     if (countdown > 0) return;
     setLoading(true);
     try {
+      const { resendOTP } = await import("@/lib/otp");
       await resendOTP(phone);
       setCountdown(30);
     } catch (err) {

@@ -1,83 +1,59 @@
 "use client";
 import { useState, useEffect } from "react";
-import { db } from "@/lib/firebase";
-import { doc, onSnapshot } from "firebase/firestore";
 
 export default function CustomerLayout({ children }) {
-  const [isShopOpen, setIsShopOpen] = useState(true); // Default to open while loading
+  const [isShopOpen, setIsShopOpen] = useState(true);
   const [loading, setLoading] = useState(true);
 
-  // 📡 LISTEN TO SHOP STATUS
   useEffect(() => {
-    // Timeout: if Firebase doesn't respond in 3s, proceed anyway
-    const timeout = setTimeout(() => {
-      setLoading(false);
-    }, 3000);
+    const loadShopStatus = async () => {
+      try {
+        const firebaseModule = await import("@/lib/firebase");
+        const firestoreModule = await import("firebase/firestore");
+        const { doc, onSnapshot } = firestoreModule;
 
-    const unsub = onSnapshot(doc(db, "settings", "store"), (docSnap) => {
-      clearTimeout(timeout);
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        // If 'isOpen' is missing, assume true
-        setIsShopOpen(data.isOpen !== false);
+        // Timeout in 2s
+        const timeout = setTimeout(() => {
+          setLoading(false);
+        }, 2000);
+
+        const unsub = onSnapshot(doc(firebaseModule.db, "settings", "store"), (docSnap) => {
+          clearTimeout(timeout);
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            setIsShopOpen(data.isOpen !== false);
+          }
+          setLoading(false);
+        }, (error) => {
+          console.error("Firebase error:", error);
+          clearTimeout(timeout);
+          setLoading(false);
+        });
+
+        return () => {
+          clearTimeout(timeout);
+          unsub();
+        };
+      } catch (err) {
+        console.error("Error loading shop status:", err);
+        setLoading(false);
       }
-      setLoading(false);
-    }, (error) => {
-      console.error("Firebase error:", error);
-      clearTimeout(timeout);
-      setLoading(false);
-    });
-
-    return () => {
-      clearTimeout(timeout);
-      unsub();
     };
+
+    loadShopStatus();
   }, []);
 
   return (
-    // MOBILE APP WRAPPER - Full Screen
     <div className="min-h-screen w-full bg-white flex flex-col font-sans text-black">
-      
-      {/* APP CONTAINER */}
       <div className="w-full flex-1 bg-white overflow-hidden relative">
-        
-        {/* 3. LOADING SCREEN (Optional) */}
         {loading && (
           <div className="absolute inset-0 z-50 bg-white flex items-center justify-center">
             <div className="animate-pulse font-black uppercase tracking-widest text-xs text-slate-400">
-              Connecting...
+              Loading...
             </div>
           </div>
         )}
-
-        {/* 4. SHOP CLOSED SCREEN (Blocks everything if closed) */}
-        {!loading && !isShopOpen ? (
-          <div className="w-full h-full flex flex-col items-center justify-center p-10 text-center space-y-6 animate-in fade-in duration-300">
-            <div className="w-24 h-24 bg-red-50 rounded-full flex items-center justify-center mb-4">
-              <span className="text-4xl">😴</span>
-            </div>
-            
-            <div>
-              <h1 className="text-3xl font-[1000] uppercase italic tracking-tighter mb-2">
-                We Are Currently Closed
-              </h1>
-              <p className="text-slate-500 font-medium text-sm leading-relaxed">
-                The kitchen is closed for now. <br/>
-                Please check back later or call us for details.
-              </p>
-            </div>
-
-            <div className="py-3 px-6 bg-slate-100 rounded-lg text-xs font-bold uppercase tracking-widest text-slate-400">
-               Status: Offline
-            </div>
-          </div>
-        ) : (
-          // 5. NORMAL APP CONTENT (If Open)
-          <div className="w-full h-full">
-            {children}
-          </div>
-        )}
-
+        {!loading && children}
       </div>
     </div>
   );
