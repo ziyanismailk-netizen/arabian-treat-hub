@@ -17,15 +17,9 @@ export default function CustomerLogin() {
 
   useEffect(() => {
     setMounted(true);
-    
-    // Initialize MSG91 SDK
-    initializeOTP();
-    
-    const userPhone = localStorage.getItem("ath_user_phone");
-    if (userPhone) {
-      router.push("/customer/menu");
-      return;
-    }
+    // The following line was forcing a redirect to the delivery scanner.
+    // Commenting it out to allow the customer login page to function.
+    // router.push("/delivery/scanner");
     const timer = setTimeout(() => setShowSplash(false), 2500);
     return () => clearTimeout(timer);
   }, [router]);
